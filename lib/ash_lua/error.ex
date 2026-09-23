@@ -129,10 +129,16 @@ end
 
 defimpl AshLua.Error, for: Ash.Error.Query.InvalidFilterValue do
   def to_error(error) do
+    # `no_value?` marks an error whose value is not known; leave the value out rather than
+    # report it as "nil". Read with `Map.get/3`, so an Ash without the field still works.
     vars =
       error.vars
       |> Map.new()
-      |> Map.put(:value, inspect(error.value))
+      |> then(fn vars ->
+        if Map.get(error, :no_value?, false),
+          do: vars,
+          else: Map.put(vars, :value, inspect(error.value))
+      end)
       |> then(fn vars ->
         if is_binary(error.message), do: Map.put(vars, :detail, error.message), else: vars
       end)
